@@ -34,7 +34,8 @@ jobs:
           rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src
           cp ifl/fastlane.env fastlane/.env.ifl
           cp ifl/ci/google-services.json android/app/google-services.json
-      - uses: ./.github/actions/prepare-mobile-build
+      # The release jobs' cache-free setup, so CI proves the release build path.
+      - uses: ./.github/actions/ifl-release-deps
       - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
         with:
           distribution: temurin

@@ -1,0 +1,198 @@
+name: ifl-release-mobile
+# Runs only for a pushed tag ifl-mobile-v<package.json version>[-r<n>] (the
+# `release` environment accepts only those tags and waits for Josh). No
+# workflow_dispatch: a dispatch from a branch could reach the signing secrets.
+# No caches: every dependency is installed fresh (ifl-release-deps). Before
+# each upload the tag must still point at the commit that was built.
+on:
+  push:
+    tags: ['ifl-mobile-v*']
+permissions:
+  contents: read
+concurrency:
+  group: ifl-release-mobile
+  cancel-in-progress: false
+jobs:
+  android:
+    if: startsWith(github.ref, 'refs/tags/ifl-mobile-v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The tag names this version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          REV=${TAG#"ifl-mobile-v$VERSION"}
+          if [ "$REV" = "$TAG" ] || ! [[ -z "$REV" || "$REV" =~ ^-r[0-9]+$ ]]; then
+            echo "::error::tag $TAG does not match package.json version $VERSION (expected ifl-mobile-v$VERSION or ifl-mobile-v$VERSION-r<n>)"
+            exit 1
+          fi
+      - name: IFL assets and fastlane settings
+        run: |
+          rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src
+          cp ifl/fastlane.env fastlane/.env.ifl
+      - uses: ./.github/actions/ifl-release-deps
+      - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: ./node_modules/.bin/jetify
+      - name: Signing material (temporary files)
+        env:
+          ANDROID_UPLOAD_KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          umask 077
+          printf '%s' "$ANDROID_UPLOAD_KEYSTORE" | base64 -d > android/app/ifl-upload.jks
+          printf '%s' "$ANDROID_GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/play.json"
+          {
+            echo ""
+            echo "MATTERMOST_RELEASE_STORE_FILE=ifl-upload.jks"
+            echo "MATTERMOST_RELEASE_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "MATTERMOST_RELEASE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+          } >> android/gradle.properties
+      - name: Build number
+        # fastlane's set_app_build_number also sets the iOS number with
+        # agvtool, which Linux runners do not have; Android needs only this.
+        run: |
+          BUILD=$((1000 + GITHUB_RUN_NUMBER))
+          sed -i -E "s/^([[:space:]]*versionCode) [0-9]+$/\1 $BUILD/" android/app/build.gradle
+          grep -q "versionCode $BUILD\$" android/app/build.gradle
+      - name: Build AAB and APK
+        working-directory: fastlane
+        run: bundle exec fastlane android build --env ifl
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android
+          path: |
+            IFL_Chat.aab
+            IFL_Chat*.apk
+          if-no-files-found: error
+      - name: The tag still points at the commit that was built
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
+      - name: Upload the AAB to Play internal testing
+        working-directory: fastlane
+        env:
+          SUPPLY_JSON_KEY: ${{ runner.temp }}/play.json
+        run: bundle exec fastlane android deploy file:"$GITHUB_WORKSPACE/IFL_Chat.aab" --env ifl
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f android/app/ifl-upload.jks android/app/google-services.json "${RUNNER_TEMP:?}/play.json"
+          git checkout -- android/gradle.properties || true
+      - name: The tag still points at the commit that was built
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
+      - name: APK on the tag's GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          BUILD=$((1000 + GITHUB_RUN_NUMBER))
+          APKS=("$GITHUB_WORKSPACE"/IFL_Chat*.apk)
+          cp "${APKS[0]}" "ifl-chat-${VERSION}-${BUILD}.apk"
+          sha256sum "ifl-chat-${VERSION}-${BUILD}.apk" > SHA256SUMS
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "IFL Chat for Android ${VERSION} (${BUILD})" \
+            --notes "Signed APK for members without Google Play. It does not update itself; install the next one over it." \
+            "ifl-chat-${VERSION}-${BUILD}.apk" SHA256SUMS
+
+  ios:
+    if: startsWith(github.ref, 'refs/tags/ifl-mobile-v')
+    runs-on: macos-15
+    timeout-minutes: 150
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The tag names this version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(jq -r .version package.json)
+          REV=${TAG#"ifl-mobile-v$VERSION"}
+          if [ "$REV" = "$TAG" ] || ! [[ -z "$REV" || "$REV" =~ ^-r[0-9]+$ ]]; then
+            echo "::error::tag $TAG does not match package.json version $VERSION (expected ifl-mobile-v$VERSION or ifl-mobile-v$VERSION-r<n>)"
+            exit 1
+          fi
+      - name: IFL assets and fastlane settings
+        run: |
+          rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src
+          cp ifl/fastlane.env fastlane/.env.ifl
+      - name: Xcode 26.1 or newer (as upstream's prepare-ios-build)
+        run: |
+          version_ge() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
+          CURRENT=$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || echo 0)
+          if ! version_ge "$CURRENT" 26.1; then
+            XCODE=$(for app in /Applications/Xcode_*.app; do v=$(basename "$app" .app | sed 's/^Xcode_//'); version_ge "$v" 26.1 && echo "$app"; done | sort -V | tail -1)
+            [ -n "$XCODE" ] || { echo "::error::no Xcode 26.1+ on this runner"; exit 1; }
+            sudo xcode-select -s "$XCODE"
+          fi
+          xcodebuild -version
+      - uses: ./.github/actions/ifl-release-deps
+      - name: CocoaPods (no cache)
+        run: |
+          bundle config set --local path vendor/bundle
+          bundle install
+          bundle exec npm run pod-install
+      - name: Deploy key for the match repository
+        env:
+          MATCH_GIT_DEPLOY_KEY: ${{ secrets.MATCH_GIT_DEPLOY_KEY }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$MATCH_GIT_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - name: Build number
+        working-directory: fastlane
+        run: INCREMENT_BUILD_NUMBER=true BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER)) bundle exec fastlane set_app_build_number --env ifl
+      - name: Build and sign
+        working-directory: fastlane
+        env:
+          FASTLANE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          IOS_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          IOS_API_KEY: ${{ secrets.ASC_API_KEY_P8 }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: bundle exec fastlane ios build --env ifl
+      - name: The tag still points at the commit that was built
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
+      - name: Upload to TestFlight
+        working-directory: fastlane
+        env:
+          FASTLANE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          IOS_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          IOS_API_KEY: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          IPAS=("$GITHUB_WORKSPACE"/*.ipa)
+          bundle exec fastlane ios deploy file:"${IPAS[0]}" --env ifl
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_ed25519 "${GITHUB_WORKSPACE:?}"/*.p8
+          security delete-keychain fastlane_tmp_keychain 2>/dev/null || true

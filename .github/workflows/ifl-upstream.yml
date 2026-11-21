@@ -1,0 +1,128 @@
+name: ifl-upstream
+# Weekly check of the newest stable mattermost/mattermost-mobile tag. Nothing
+# from upstream is executed here: `trial` only asks git whether the tag merges
+# cleanly (read-only token, no secrets, no build, no cache) and emits
+# validated values. When it is clean, `propose` pushes the tag's commit as
+# branch upstream/<tag> and opens a pull request into ifl/main, where the
+# normal ifl-ci (no secrets) builds and tests it. `report` keeps an issue.
+on:
+  schedule:
+    - cron: '0 11 * * 1'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  trial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      merge: ${{ steps.merge.outputs.merge }}
+      needs: ${{ steps.merge.outputs.needs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ifl/main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Newest stable upstream tag not yet merged
+        id: tag
+        run: |
+          # Upstream's tags only, in their own namespace, so no tag in this fork can stand in.
+          git fetch --quiet --no-tags https://github.com/mattermost/mattermost-mobile.git '+refs/tags/v*:refs/ifl-upstream-tags/v*'
+          TAG=$(git for-each-ref --format='%(refname:lstrip=2)' refs/ifl-upstream-tags/ | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          if [ -z "$TAG" ] || git merge-base --is-ancestor "refs/ifl-upstream-tags/$TAG" HEAD; then
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trial merge (git only; nothing is built or run)
+        if: steps.tag.outputs.tag != ''
+        id: merge
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          git config user.name ifl-upstream
+          git config user.email ifl-upstream@users.noreply.github.com
+          NEEDS=$(git show "refs/ifl-upstream-tags/$TAG:app/constants/supported_server.ts" | sed -n "s/.*FULL_VERSION = '\([0-9.]*\)'.*/\1/p" | head -1)
+          if printf '%s' "$NEEDS" | grep -Eq '^[0-9]+(\.[0-9]+){1,3}$'; then echo "needs=$NEEDS" >> "$GITHUB_OUTPUT"; else echo "needs=unknown" >> "$GITHUB_OUTPUT"; fi
+          if git merge --no-commit --no-ff "refs/ifl-upstream-tags/$TAG" > /dev/null; then
+            echo "merge=clean" >> "$GITHUB_OUTPUT"
+          else
+            echo "Conflicted files:"
+            git diff --name-only --diff-filter=U
+            echo "merge=conflicts" >> "$GITHUB_OUTPUT"
+          fi
+          git merge --abort 2>/dev/null || true
+
+  propose:
+    needs: trial
+    if: needs.trial.outputs.merge == 'clean'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr: ${{ steps.pr.outputs.pr }}
+    steps:
+      - name: Branch upstream/<tag> and a pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.trial.outputs.tag }}
+          NEEDS: ${{ needs.trial.outputs.needs }}
+        run: |
+          printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::bad tag"; exit 1; }
+          BRANCH="upstream/$TAG"
+          if [ -n "$(gh pr list -R "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]; then
+            echo "pr=exists" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git init -q work && cd work
+          git fetch --quiet --no-tags https://github.com/mattermost/mattermost-mobile.git "+refs/tags/$TAG:refs/ifl-upstream-tags/$TAG"
+          # A GITHUB_TOKEN cannot push commits that change .github/workflows;
+          # then the merge is done on a workstation (IFL.md, Upstream releases).
+          if ! git push --quiet "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/ifl-upstream-tags/$TAG^{commit}:refs/heads/$BRANCH"; then
+            echo "pr=push-refused" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          gh pr create -R "$GITHUB_REPOSITORY" --base ifl/main --head "$BRANCH" --title "Merge upstream $TAG" \
+            --body "Mattermost mobile $TAG merges into ifl/main without conflicts. It needs a server of at least $NEEDS (IFL Chat's server fork is Mattermost 12.1.0). A pull request opened by the workflow token does not start CI: close and reopen it to run ifl-ci. Before merging, follow IFL.md, Upstream releases (keep every IFL hook, set ifl/UPSTREAM, disable any new upstream workflow)."
+          echo "pr=opened" >> "$GITHUB_OUTPUT"
+
+  report:
+    needs: [trial, propose]
+    if: always() && needs.trial.outputs.tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.trial.outputs.tag }}
+          MERGE: ${{ needs.trial.outputs.merge }}
+          PR: ${{ needs.propose.outputs.pr }}
+          NEEDS: ${{ needs.trial.outputs.needs }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Accept only the values the other jobs can emit.
+          printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::bad tag"; exit 1; }
+          printf '%s' "$NEEDS" | grep -Eq '^([0-9]+(\.[0-9]+){1,3}|unknown)$' || NEEDS=unknown
+          case "$MERGE" in
+            clean) MERGE_TEXT="merges cleanly" ;;
+            conflicts) MERGE_TEXT="has merge conflicts (listed in the run log)" ;;
+            *) MERGE_TEXT="the trial merge did not finish (see the run log)" ;;
+          esac
+          case "$PR" in
+            opened) PR_TEXT="A pull request from upstream/$TAG is open; close and reopen it to start CI." ;;
+            exists) PR_TEXT="The pull request from upstream/$TAG is already open." ;;
+            push-refused) PR_TEXT="The workflow token could not push upstream/$TAG (it changes workflows): merge it on a workstation." ;;
+            *) PR_TEXT="No pull request: merge it on a workstation." ;;
+          esac
+          TITLE="Upstream $TAG"
+          BODY="Mattermost mobile $TAG $MERGE_TEXT. $PR_TEXT It needs a server of at least $NEEDS (IFL Chat's server fork is Mattermost 12.1.0; merge the server first if that is lower). Run: $RUN. See IFL.md, Upstream releases."
+          N=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$N" ]; then gh issue comment "$N" -R "$GITHUB_REPOSITORY" --body "$BODY"; else gh issue create -R "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"; fi

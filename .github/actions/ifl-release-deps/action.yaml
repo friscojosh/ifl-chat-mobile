@@ -1,0 +1,33 @@
+# IFL: new file. Release builds' dependencies, the same steps as upstream's
+# prepare-mobile-build and prepare-node-deps but with no cache of any kind
+# (no actions/cache, no setup-node or setup-ruby cache): a release must not
+# restore anything another run wrote.
+name: ifl-release-deps
+description: Node and fastlane dependencies for IFL release builds, without caches
+
+runs:
+  using: composite
+  steps:
+    - uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af # v1.313.0
+    - name: fastlane gems
+      shell: bash
+      working-directory: ./fastlane
+      run: |
+        bundle config set --local path 'vendor/bundle'
+        bundle install
+    - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      with:
+        node-version-file: ".nvmrc"
+        package-manager-cache: false
+    - name: npm dependencies, patches, assets, icon font
+      shell: bash
+      env:
+        NODE_ENV: development
+      run: |
+        npm ci --ignore-scripts
+        node node_modules/@sentry/cli/scripts/install.js
+        npx patch-package
+        node ./scripts/generate-assets.js
+        cp node_modules/@mattermost/compass-icons/font/compass-icons.ttf assets/fonts/
+        cp node_modules/@mattermost/compass-icons/font/compass-icons.ttf android/app/src/main/assets/fonts
+        node scripts/generate-compass-glyph-map.mjs

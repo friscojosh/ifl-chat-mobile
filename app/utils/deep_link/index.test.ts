@@ -26,6 +26,8 @@ import {alertErrorWithFallback, errorBadChannel, errorUnkownUser} from '../draft
 
 import {alertInvalidDeepLink, extractServerUrl, getLaunchPropsFromDeepLink, parseAndHandleDeepLink} from './index';
 
+jest.mock('@utils/ifl/config', () => ({...jest.requireActual('@utils/ifl/config'), iflAllowsServer: () => true})); // IFL: these tests cover upstream's any-server links
+
 jest.mock('@actions/remote/user', () => ({
     fetchUsersByUsernames: jest.fn(),
 }));

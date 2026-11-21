@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 export default {
-    TERMS_OF_SERVICE: 'https://about.mattermost.com/default-terms/',
-    PRIVACY_POLICY: 'https://about.mattermost.com/default-privacy-policy/',
-    FEEDBACK_FORUM: 'https://forum.mattermost.com',
+    TERMS_OF_SERVICE: 'https://iflgm.com/terms', // IFL
+    PRIVACY_POLICY: 'https://iflgm.com/privacy', // IFL
+    FEEDBACK_FORUM: 'https://iflgm.com/suggestion-box', // IFL
 };

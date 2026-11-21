@@ -8,6 +8,18 @@ New IFL code: `app/utils/ifl/`, `app/components/ifl/` (inside existing path alia
 
 | Location | Purpose |
 | --- | --- |
+| `app/utils/deep_link/index.ts:30,52` | Refuse a deep link to any server but chat.iflgm.com (`iflAllowsServer`) |
+| `app/screens/home/channel_list/channel_list.tsx:28,87` | No server switcher or "Add a server" (`IFL_LOCK_SERVER`) |
+| `app/screens/select_team/header.tsx:13,54` | The same on the select-team screen |
+| `app/screens/data_erased/index.tsx:17,159-166` | No server switcher on the data-erased screen |
+| `app/screens/server/index.tsx:29,96` | The server address field is read-only (if auto-connect fails, nobody can type another server) |
+| `app/constants/about_links.ts:5-7` | Terms, privacy and feedback links go to iflgm.com |
+| `app/utils/deep_link/index.test.ts:29` | Test-only: upstream's deep-link tests run with any server allowed |
+| `app/screens/data_erased/index.test.tsx:19` | Test-only: upstream's data-erased tests run unlocked |
+
+## What the fork changes
+
+- **Locked server.** `config.json` auto-connects to chat.iflgm.com; `IflLockServer` hides the server switcher where upstream hides it for MDM and on the data-erased screen, makes the server address read-only, and refuses deep links to any other host (`app/utils/ifl/config.ts`). About links go to iflgm.com.
 
 ## Overrides (no code)
 

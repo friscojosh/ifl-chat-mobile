@@ -12,7 +12,7 @@
     "mobile.managed.not_secured.android": "This device must be secured with a screen lock to use IFL Chat.",
     "mobile.managed.not_secured.ios": "This device must be secured with biometrics or passcode to use IFL Chat.\n\nGo to Settings > Face ID & Passcode.",
     "mobile.server_upgrade.description": "\nThe IFL Chat server needs an upgrade to work with this app. Please tell the commissioner.\n",
-    "onboaring.welcome_description": "League chat for the Inception Fantasy League.",
+    "onboaring.welcome_description": "League chat for the International Fantasy League.",
     "rate.title": "Enjoying IFL Chat?",
     "settings.about.powered_by": "{site} is built on Mattermost",
     "settings.notice_text": "IFL Chat is made possible by the open source software used in our {platform} and {mobile}.",

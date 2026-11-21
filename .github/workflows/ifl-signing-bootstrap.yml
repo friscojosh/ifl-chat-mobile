@@ -38,6 +38,12 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" ifl_bootstrap.keychain
           security set-keychain-settings -lut 1800 ifl_bootstrap.keychain
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" ifl_bootstrap.keychain
+      - name: The tag still points at this commit
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
       - name: Certificates and profiles
         working-directory: fastlane
         env:

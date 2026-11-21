@@ -2,6 +2,8 @@ name: ifl-release-mobile
 # Runs only for a pushed tag ifl-mobile-v<package.json version>[-r<n>] (the
 # `release` environment accepts only those tags and waits for Josh). No
 # workflow_dispatch: a dispatch from a branch could reach the signing secrets.
+# No caches: every dependency is installed fresh (ifl-release-deps). Before
+# each upload the tag must still point at the commit that was built.
 on:
   push:
     tags: ['ifl-mobile-v*']
@@ -36,7 +38,7 @@ jobs:
         run: |
           rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src
           cp ifl/fastlane.env fastlane/.env.ifl
-      - uses: ./.github/actions/prepare-mobile-build
+      - uses: ./.github/actions/ifl-release-deps
       - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
         with:
           distribution: temurin
@@ -77,6 +79,12 @@ jobs:
             IFL_Chat.aab
             IFL_Chat*.apk
           if-no-files-found: error
+      - name: The tag still points at the commit that was built
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
       - name: Upload the AAB to Play internal testing
         working-directory: fastlane
         env:
@@ -87,6 +95,12 @@ jobs:
         run: |
           rm -f android/app/ifl-upload.jks android/app/google-services.json "${RUNNER_TEMP:?}/play.json"
           git checkout -- android/gradle.properties || true
+      - name: The tag still points at the commit that was built
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
       - name: APK on the tag's GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -125,9 +139,22 @@ jobs:
         run: |
           rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src
           cp ifl/fastlane.env fastlane/.env.ifl
-      - uses: ./.github/actions/prepare-ios-build
-        with:
-          intune-enabled: "false"
+      - name: Xcode 26.1 or newer (as upstream's prepare-ios-build)
+        run: |
+          version_ge() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
+          CURRENT=$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || echo 0)
+          if ! version_ge "$CURRENT" 26.1; then
+            XCODE=$(for app in /Applications/Xcode_*.app; do v=$(basename "$app" .app | sed 's/^Xcode_//'); version_ge "$v" 26.1 && echo "$app"; done | sort -V | tail -1)
+            [ -n "$XCODE" ] || { echo "::error::no Xcode 26.1+ on this runner"; exit 1; }
+            sudo xcode-select -s "$XCODE"
+          fi
+          xcodebuild -version
+      - uses: ./.github/actions/ifl-release-deps
+      - name: CocoaPods (no cache)
+        run: |
+          bundle config set --local path vendor/bundle
+          bundle install
+          bundle exec npm run pod-install
       - name: Deploy key for the match repository
         env:
           MATCH_GIT_DEPLOY_KEY: ${{ secrets.MATCH_GIT_DEPLOY_KEY }}
@@ -139,7 +166,7 @@ jobs:
       - name: Build number
         working-directory: fastlane
         run: INCREMENT_BUILD_NUMBER=true BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER)) bundle exec fastlane set_app_build_number --env ifl
-      - name: Build, sign and upload to TestFlight
+      - name: Build and sign
         working-directory: fastlane
         env:
           FASTLANE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -147,8 +174,21 @@ jobs:
           IOS_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
           IOS_API_KEY: ${{ secrets.ASC_API_KEY_P8 }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: bundle exec fastlane ios build --env ifl
+      - name: The tag still points at the commit that was built
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          bundle exec fastlane ios build --env ifl
+          NOW=$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | cut -f1)
+          if [ "$NOW" != "$GITHUB_SHA" ]; then echo "::error::tag $TAG now points at ${NOW:-nothing}, not $GITHUB_SHA"; exit 1; fi
+      - name: Upload to TestFlight
+        working-directory: fastlane
+        env:
+          FASTLANE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          IOS_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          IOS_API_KEY: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
           IPAS=("$GITHUB_WORKSPACE"/*.ipa)
           bundle exec fastlane ios deploy file:"${IPAS[0]}" --env ifl
       - name: Remove signing material

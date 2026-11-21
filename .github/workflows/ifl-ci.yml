@@ -1,0 +1,23 @@
+name: ifl-ci
+on:
+  push:
+    branches: [ifl/main]
+  pull_request:
+    branches: [ifl/main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: IFL assets over the base
+        run: if [ -d ifl/assets ]; then rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src; fi
+      - uses: ./.github/actions/prepare-node-deps
+      - run: npm run tsc
+      - run: npm run lint
+      - name: IFL tests
+        run: if [ -d app/utils/ifl ]; then npx jest app/utils/ifl app/components/ifl --maxWorkers=2; fi

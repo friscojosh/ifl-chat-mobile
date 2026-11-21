@@ -7,6 +7,7 @@ import {StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle
 
 import CompassIcon from '@components/compass_icon';
 import CustomStatusEmoji from '@components/custom_status/custom_status_emoji';
+import TeamChip from '@components/ifl/team_chip'; // IFL: team chip
 import ProfilePicture from '@components/profile_picture';
 import {AgentTag, BotTag, GuestTag} from '@components/tag';
 import {useTheme} from '@context/theme';
@@ -190,6 +191,7 @@ const UserItem = ({
                                 </Text>
                             )}
                         </Text>
+                        {user && !bot ? <TeamChip userId={user.id}/> : null}{/* IFL: team chip (IFL Chat apps plan) */}
                         {showBadges && isAgent && (
                             <AgentTag testID={`${userItemTestId}.agent.tag`}/>
                         )}

@@ -14,12 +14,16 @@ New IFL code: `app/utils/ifl/`, `app/components/ifl/` (inside existing path alia
 | `app/screens/data_erased/index.tsx:17,159-166` | No server switcher on the data-erased screen |
 | `app/screens/server/index.tsx:29,96` | The server address field is read-only (if auto-connect fails, nobody can type another server) |
 | `app/constants/about_links.ts:5-7` | Terms, privacy and feedback links go to iflgm.com |
+| `app/components/post_list/post/header/header.tsx:12,147` | Team chip after the author's name (not on system or webhook posts) |
+| `app/components/user_item/user_item.tsx:10,194` | Team chip after the name in user lists (not for bots) |
+| `app/actions/websocket/event.ts:17,393` | `custom_ifl_team_badges_changed` refetches the chips (`handleIflEvents`) |
 | `app/utils/deep_link/index.test.ts:29` | Test-only: upstream's deep-link tests run with any server allowed |
 | `app/screens/data_erased/index.test.tsx:19` | Test-only: upstream's data-erased tests run unlocked |
 
 ## What the fork changes
 
 - **Locked server.** `config.json` auto-connects to chat.iflgm.com; `IflLockServer` hides the server switcher where upstream hides it for MDM and on the data-erased screen, makes the server address read-only, and refuses deep links to any other host (`app/utils/ifl/config.ts`). About links go to iflgm.com.
+- **Team chips.** After each GM's name in posts and user lists, from `GET /api/v4/ifl/team_badges` (per server, in memory; on first use, app foreground and the `custom_ifl_team_badges_changed` event; a failed fetch keeps what was there): the team abbreviation on its colour (`IflTeamChipStyle: "abbr"`, phones' choice: no NFL logos), or the logo (`"logo"`). Accessible label "<Team name> · <Conference>". `app/utils/ifl/team_badges.ts`, `app/utils/ifl/websocket.ts`, `app/components/ifl/team_chip.tsx`.
 
 ## Overrides (no code)
 

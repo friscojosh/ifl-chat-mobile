@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <mask id="ball">
+      <rect width="32" height="32" fill="#fff"/>
+      <g transform="rotate(-30 16 13)">
+        <ellipse cx="16" cy="13" rx="8.5" ry="4.8" fill="#000"/>
+        <path d="M12.5 13h7M14 11.6v2.8M16 11.6v2.8M18 11.6v2.8" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>
+      </g>
+    </mask>
+  </defs>
+  <path mask="url(#ball)" fill="#FFFFFF" d="M6 3h20a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H15l-6.5 5.5V23H6a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z"/>
+</svg>

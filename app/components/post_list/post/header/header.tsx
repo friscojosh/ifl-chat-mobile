@@ -9,6 +9,7 @@ import {removePost} from '@actions/local/post';
 import CompassIcon from '@components/compass_icon';
 import FormattedText from '@components/formatted_text';
 import FormattedTime from '@components/formatted_time';
+import TeamChip from '@components/ifl/team_chip'; // IFL: team chip
 import ExpiryTimer from '@components/post_list/post/header/expiry_timer';
 import PostPriorityLabel from '@components/post_priority/post_priority_label';
 import {Screens} from '@constants';
@@ -143,6 +144,7 @@ const Header = (props: HeaderProps) => {
                         showCustomStatusEmoji={showCustomStatusEmoji}
                         customStatus={customStatus!}
                     />
+                    {!isSystemPost && !isWebHook && <TeamChip userId={post.userId}/>}{/* IFL: team chip after the name (IFL Chat apps plan) */}
                     {(!isSystemPost || isAutoResponse) &&
                     <HeaderTag
                         isAutoResponder={isAutoResponse}

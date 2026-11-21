@@ -14,6 +14,7 @@ import {handleAgentsEvents} from '@agents/actions/websocket/events';
 import * as calls from '@calls/connection/websocket_event_handlers';
 import {WebsocketEvents} from '@constants';
 import {handlePlaybookEvents} from '@playbooks/actions/websocket/events';
+import {handleIflEvents} from '@utils/ifl/websocket'; // IFL
 
 import {handleChannelAccessControlUpdatedEvent, handlePermissionPolicyUpdatedEvent, handleRedactionForPropertyFieldChanged, handleRedactionForPropertyValuesUpdated} from './access_control';
 import * as category from './category';
@@ -389,4 +390,5 @@ export async function handleWebSocketEvent(serverUrl: string, msg: WebSocketMess
     }
     handlePlaybookEvents(serverUrl, msg);
     handleAgentsEvents(serverUrl, msg);
+    handleIflEvents(serverUrl, msg); // IFL: team chip refresh (IFL Chat apps plan)
 }

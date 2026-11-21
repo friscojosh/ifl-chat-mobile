@@ -14,6 +14,7 @@ import {useTheme} from '@context/theme';
 import useDidMount from '@hooks/did_mount';
 import {usePreventDoubleTap} from '@hooks/utils';
 import Servers from '@screens/home/channel_list/servers';
+import {IFL_LOCK_SERVER} from '@utils/ifl/config'; // IFL: locked server
 import {changeOpacity, makeStyleSheetFromTheme} from '@utils/theme';
 import {typography} from '@utils/typography';
 
@@ -155,12 +156,14 @@ const DataErased = ({serverUrl, displayName}: DataErasedProps) => {
                     />
                 )}
             </View>
-            <Servers
-                iconStyle={iconStyle}
-                iconColor={iconColor}
-                badgeBorderColor={theme.centerChannelBg}
-                testID='data_erased.servers.server_icon'
-            />
+            {!IFL_LOCK_SERVER && (
+                <Servers
+                    iconStyle={iconStyle}
+                    iconColor={iconColor}
+                    badgeBorderColor={theme.centerChannelBg}
+                    testID='data_erased.servers.server_icon'
+                />
+            )}{/* IFL: no server switcher in the locked app */}
         </View>
     );
 };

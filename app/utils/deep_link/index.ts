@@ -27,6 +27,7 @@ import EphemeralStore from '@store/ephemeral_store';
 import {NavigationStore} from '@store/navigation_store';
 import {alertErrorWithFallback, errorBadChannel, errorUnkownUser} from '@utils/draft';
 import {getIntlShape} from '@utils/general';
+import {iflAllowsServer} from '@utils/ifl/config'; // IFL: locked server
 import {logError} from '@utils/log';
 import {escapeRegex} from '@utils/markdown';
 import {addNewServer} from '@utils/server';
@@ -46,6 +47,9 @@ const deepLinkScreens: AvailableScreens[] = [Screens.HOME, Screens.CHANNEL, Scre
 export async function handleDeepLink(deepLink: DeepLinkWithData, intlShape?: IntlShape, location?: string) {
     try {
         if (deepLink.type === DeepLink.Invalid || !deepLink.data || !deepLink.data.serverUrl) {
+            return {error: true};
+        }
+        if (!iflAllowsServer(deepLink.data.serverUrl)) { // IFL: IFL Chat opens only chat.iflgm.com links
             return {error: true};
         }
 

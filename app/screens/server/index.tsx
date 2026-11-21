@@ -26,6 +26,7 @@ import Background from '@screens/background';
 import {navigateBack, navigateToScreen} from '@screens/navigation';
 import EphemeralStore from '@store/ephemeral_store';
 import {getErrorMessage, preauthSecretInvalidMessage} from '@utils/errors';
+import {IFL_LOCK_SERVER} from '@utils/ifl/config'; // IFL: locked server
 import {canReceiveNotifications} from '@utils/push_proxy';
 import {getLoginScreen, loginOptions} from '@utils/server';
 import {changeOpacity, makeStyleSheetFromTheme} from '@utils/theme';
@@ -92,7 +93,7 @@ const Server = ({
     const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
     const styles = getStyleSheet(theme);
     const {formatMessage} = intl;
-    const disableServerUrl = Boolean(managedConfig?.allowOtherServers === 'false' && managedConfig?.serverUrl);
+    const disableServerUrl = Boolean(managedConfig?.allowOtherServers === 'false' && managedConfig?.serverUrl) || IFL_LOCK_SERVER; // IFL: the address is fixed in the locked app
     const additionalServer = launchType === Launch.AddServerFromDeepLink || launchType === Launch.AddServer;
 
     const animatedStyles = useScreenTransitionAnimation(animated);

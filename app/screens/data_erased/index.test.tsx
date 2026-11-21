@@ -16,6 +16,8 @@ import DataErased from './index';
 
 import type ServersModel from '@typings/database/models/app/servers';
 
+jest.mock('@utils/ifl/config', () => ({...jest.requireActual('@utils/ifl/config'), IFL_LOCK_SERVER: false})); // IFL: these tests cover upstream's server switcher
+
 jest.mock('@actions/remote/restore_server', () => ({
     restoreServerAfterDatabaseWipe: jest.fn(),
 }));

@@ -25,6 +25,7 @@ import PerformanceMetricsManager from '@managers/performance_metrics_manager';
 import {navigateToScreen} from '@screens/navigation';
 import {NavigationStore, useCurrentScreen} from '@store/navigation_store';
 import {isMainActivity} from '@utils/helpers';
+import {IFL_LOCK_SERVER} from '@utils/ifl/config'; // IFL: locked server
 import {tryRunAppReview} from '@utils/reviews';
 import {addSentryContext} from '@utils/sentry';
 
@@ -83,7 +84,7 @@ const ChannelListScreen = (props: ChannelProps) => {
     const insets = useSafeAreaInsets();
     const serverUrl = useServerUrl();
     const params = route.params as {direction: string};
-    const canAddOtherServers = managedConfig?.allowOtherServers !== 'false';
+    const canAddOtherServers = managedConfig?.allowOtherServers !== 'false' && !IFL_LOCK_SERVER; // IFL: one locked server, no switcher
     const isTabScreen = currentScreen && HOME_TAB_SCREENS.has(currentScreen);
 
     const handleBackPress = useCallback(() => {

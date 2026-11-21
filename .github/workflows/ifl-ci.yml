@@ -21,3 +21,34 @@ jobs:
       - run: npm run lint
       - name: IFL tests
         run: if [ -d app/utils/ifl ]; then npx jest app/utils/ifl app/components/ifl --maxWorkers=2; fi
+  android-debug-signed:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: IFL assets, fastlane settings, placeholder Firebase config
+        run: |
+          rm -rf assets/override && cp -R ifl/assets assets/override && rm -rf assets/override/src
+          cp ifl/fastlane.env fastlane/.env.ifl
+          cp ifl/ci/google-services.json android/app/google-services.json
+      - uses: ./.github/actions/prepare-mobile-build
+      - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: ./node_modules/.bin/jetify
+      - name: Release APK signed with the debug key (no upload key in CI)
+        working-directory: fastlane
+        env:
+          ANDROID_BUILD_TASK: assemble
+        run: bundle exec fastlane android build --env ifl
+      - run: ls -l "$GITHUB_WORKSPACE"/IFL_Chat*.apk
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ifl-chat-android-debug-signed
+          path: IFL_Chat*.apk
+          retention-days: 14
+          if-no-files-found: error

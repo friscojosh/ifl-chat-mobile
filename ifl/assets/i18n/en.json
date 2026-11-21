@@ -1,0 +1,20 @@
+{
+    "mobile.login_options.gitlab": "Sign in with iflgm.com",
+    "about.mattermost": "IFL Chat",
+    "about.planNameLearn": "Built on Mattermost {planName}, open source software. Learn more at ",
+    "about.teamEditionLearn": "Built on Mattermost, open source software. Learn more at ",
+    "extension.no_memberships.description": "To share content, you'll need to be a member of the league in IFL Chat.",
+    "extension.no_servers.description": "To share content, you'll need to be signed in to IFL Chat.",
+    "invite_people_to_team.message": "Here’s a link to the league in IFL Chat.",
+    "mobile.calls_mic_error": "To participate, open Settings to grant IFL Chat access to your microphone.",
+    "mobile.calls.foreground_service.channel_name": "IFL Chat Calls",
+    "mobile.calls.foreground_service.title": "IFL Chat",
+    "mobile.managed.not_secured.android": "This device must be secured with a screen lock to use IFL Chat.",
+    "mobile.managed.not_secured.ios": "This device must be secured with biometrics or passcode to use IFL Chat.\n\nGo to Settings > Face ID & Passcode.",
+    "mobile.server_upgrade.description": "\nThe IFL Chat server needs an upgrade to work with this app. Please tell the commissioner.\n",
+    "onboaring.welcome_description": "League chat for the Inception Fantasy League.",
+    "rate.title": "Enjoying IFL Chat?",
+    "settings.about.powered_by": "{site} is built on Mattermost",
+    "settings.notice_text": "IFL Chat is made possible by the open source software used in our {platform} and {mobile}.",
+    "share_extension.channel_error": "You are not a member of the league on the selected server. Open IFL Chat to join."
+}

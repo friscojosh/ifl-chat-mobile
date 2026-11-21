@@ -1,0 +1,15 @@
+{
+    "AuthUrlScheme": "iflchatauth://",
+    "AuthUrlSchemeDev": "iflchatauthdev://",
+    "DefaultServerUrl": "https://chat.iflgm.com",
+    "DefaultServerName": "IFL Chat",
+    "AutoSelectServerUrl": true,
+    "WebsiteURL": "https://iflgm.com",
+    "ServerNoticeURL": "https://github.com/friscojosh/ifl-chat/blob/ifl/main/NOTICE.txt",
+    "MobileNoticeURL": "https://github.com/friscojosh/ifl-chat-mobile/blob/ifl/main/NOTICE.txt",
+    "ShowReview": false,
+    "ShowOnboarding": false,
+    "IflLockServer": true,
+    "IflTeamChips": true,
+    "IflTeamChipStyle": "abbr"
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IFL: IFL Chat's splash background is the icon's slate. -->
+<resources>
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+    <color name="splashscreen_bg">#34465F</color>
+</resources>

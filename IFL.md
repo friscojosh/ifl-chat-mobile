@@ -36,7 +36,15 @@ New IFL code: `app/utils/ifl/`, `app/components/ifl/` (inside existing path alia
 
 ## Build and release
 
-See "Releases". `ifl-ci.yml` runs types, lint and the IFL tests on every push and pull request, and builds a debug-signed Android release APK with the placeholder `ifl/ci/google-services.json`. Upstream test and build workflows are disabled.
+`ifl-ci.yml` runs types, lint and the IFL tests on every push and pull request, and builds a debug-signed Android release APK with the placeholder `ifl/ci/google-services.json`. Upstream test and build workflows are disabled.
+
+## Releases
+
+`ifl-release-mobile.yml` runs only when a tag `ifl-mobile-v<version>` (or `ifl-mobile-v<version>-r<n>` for a rebuild of the same version) is pushed; the tag must match `package.json`'s version or the jobs stop before any secret is used. There is no manual trigger. Both jobs run in the `release` environment, which accepts only `ifl-mobile-v*` tags and waits for Josh's approval. Android: AAB to Google Play internal testing (`supply`), plus a signed APK attached to the tag's GitHub release (`gh release create <tag> --verify-tag`). iOS: match (read-only) signs, `pilot` uploads to TestFlight. Build numbers are 1000 + the run number on both platforms (Android's is written into `android/app/build.gradle` directly: fastlane's `set_app_build_number` needs Xcode's `agvtool`). To release: `git tag ifl-mobile-v2.46.0 && git push origin ifl-mobile-v2.46.0`, then approve the deployment; re-run a failed platform's job from the run page.
+
+Secrets (environment `release`, set by Josh): `ANDROID_UPLOAD_KEYSTORE` (base64 .jks; one password for store and key, as upstream's gradle reads one), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_GOOGLE_SERVICES_JSON` (Firebase app `com.iflgm.chat`), `PLAY_SERVICE_ACCOUNT_JSON`, `APPLE_TEAM_ID`, `ASC_API_KEY_P8`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`, `MATCH_PASSWORD`, `MATCH_GIT_DEPLOY_KEY` (write deploy key of `friscojosh/ifl-chat-signing`). `ifl-signing-bootstrap.yml` creates the App Store certificate and the three profiles once: push a release tag first, then `gh workflow run ifl-signing-bootstrap.yml --ref ifl-mobile-v<version>` (it refuses any other ref). Google Play needs the very first AAB uploaded by hand in the Play Console before `supply` can upload. TestFlight builds expire after 90 days: release at least every 60 days.
+
+`ifl-upstream.yml` (weekly, or by hand) trial-merges the newest `vX.Y.Z` tag fetched from mattermost/mattermost-mobile into a job with a read-only token and no secrets, runs types and the IFL tests there, and passes only fixed status words to a second job that opens or updates an "Upstream vX.Y.Z" issue without checking out the merged code.
 
 ## Upstream releases
 

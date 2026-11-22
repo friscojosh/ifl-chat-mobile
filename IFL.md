@@ -12,7 +12,7 @@ New IFL code: `app/utils/ifl/`, `app/components/ifl/` (inside existing path alia
 | `app/screens/home/channel_list/channel_list.tsx:28,87` | No server switcher or "Add a server" (`IFL_LOCK_SERVER`) |
 | `app/screens/select_team/header.tsx:13,54` | The same on the select-team screen |
 | `app/screens/data_erased/index.tsx:17,159-166` | No server switcher on the data-erased screen |
-| `app/screens/server/index.tsx:29,96` | The server address field is read-only (if auto-connect fails, nobody can type another server) |
+| `app/screens/server/index.tsx:30,97` | The server address field is read-only (if auto-connect fails, nobody can type another server) |
 | `app/screens/server/index.tsx:17,447` | The locked app shows `LockedConnect` (logo, "Connecting…", the error and Try again) instead of the server form |
 | `app/constants/about_links.ts:5-7` | Terms, privacy and feedback links go to iflgm.com |
 | `app/components/post_list/post/header/header.tsx:12,147` | Team chip after the author's name (not on system or webhook posts) |

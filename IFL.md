@@ -12,7 +12,8 @@ New IFL code: `app/utils/ifl/`, `app/components/ifl/` (inside existing path alia
 | `app/screens/home/channel_list/channel_list.tsx:28,87` | No server switcher or "Add a server" (`IFL_LOCK_SERVER`) |
 | `app/screens/select_team/header.tsx:13,54` | The same on the select-team screen |
 | `app/screens/data_erased/index.tsx:17,159-166` | No server switcher on the data-erased screen |
-| `app/screens/server/index.tsx:29,96` | The server address field is read-only (if auto-connect fails, nobody can type another server) |
+| `app/screens/server/index.tsx:30,97` | The server address field is read-only (if auto-connect fails, nobody can type another server) |
+| `app/screens/server/index.tsx:17,447` | The locked app shows `LockedConnect` (logo, "Connecting…", the error and Try again) instead of the server form |
 | `app/constants/about_links.ts:5-7` | Terms, privacy and feedback links go to iflgm.com |
 | `app/components/post_list/post/header/header.tsx:12,147` | Team chip after the author's name (not on system or webhook posts) |
 | `app/components/user_item/user_item.tsx:10,194` | Team chip after the name in user lists (not for bots) |
@@ -23,6 +24,7 @@ New IFL code: `app/utils/ifl/`, `app/components/ifl/` (inside existing path alia
 ## What the fork changes
 
 - **Locked server.** `config.json` auto-connects to chat.iflgm.com; `IflLockServer` hides the server switcher where upstream hides it for MDM and on the data-erased screen, makes the server address read-only, and refuses deep links to any other host (`app/utils/ifl/config.ts`). About links go to iflgm.com.
+- **Connecting screen.** At launch the locked app shows its logo and "Connecting…" while it connects, then goes straight to "Sign in with iflgm.com"; on failure, the error and a Try again button (`app/components/ifl/locked_connect.tsx`). Upstream's "Connect to your server" form never shows.
 - **Team chips.** After each GM's name in posts and user lists, from `GET /api/v4/ifl/team_badges` (per server, in memory; on first use, app foreground and the `custom_ifl_team_badges_changed` event; a failed fetch keeps what was there): the team abbreviation on its colour (`IflTeamChipStyle: "abbr"`, phones' choice: no NFL logos), or the logo (`"logo"`). Accessible label "<Team name> · <Conference>". `app/utils/ifl/team_badges.ts`, `app/utils/ifl/websocket.ts`, `app/components/ifl/team_chip.tsx`.
 
 ## Overrides (no code)

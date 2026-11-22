@@ -14,6 +14,7 @@ import {doPing} from '@actions/remote/general';
 import {fetchConfigAndLicense} from '@actions/remote/systems';
 import LocalConfig from '@assets/config.json';
 import AppVersion from '@components/app_version';
+import LockedConnect from '@components/ifl/locked_connect'; // IFL: locked server's connecting screen
 import {Launch, DeepLink} from '@constants';
 import useDidMount from '@hooks/did_mount';
 import {useScreenTransitionAnimation} from '@hooks/screen_transition_animation';
@@ -441,6 +442,24 @@ const Server = ({
             canReceiveNotifications(headRequest.url, pushProxyVerification, intl);
         }, 1000);
     };
+
+    // IFL: the locked app shows its own connecting screen, not the server form
+    if (IFL_LOCK_SERVER && !additionalServer) {
+        return (
+            <View
+                style={styles.flex}
+                testID='server.screen'
+            >
+                <Background theme={theme}/>
+                <LockedConnect
+                    connecting={connecting}
+                    error={urlError || displayNameError || preauthSecretError}
+                    onRetry={() => handleConnect(LocalConfig.DefaultServerUrl)}
+                    theme={theme}
+                />
+            </View>
+        );
+    }
 
     return (
         <View

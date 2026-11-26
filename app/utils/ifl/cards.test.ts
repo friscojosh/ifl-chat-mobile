@@ -189,4 +189,13 @@ describe('loading', () => {
         expect(doFetch).toHaveBeenCalledTimes(2);
         expect(doFetch).toHaveBeenLastCalledWith('/api/v4/ifl/cards/news/abc-123', {method: 'get'});
     });
+
+    test('should fetch a story again after five minutes (owners change)', async () => {
+        doFetch.mockResolvedValue(NEWS_BODY);
+        await loadNewsStory(SERVER, 'abc-9', 0);
+        await loadNewsStory(SERVER, 'abc-9', (5 * 60_000) - 1);
+        expect(doFetch).toHaveBeenCalledTimes(1);
+        await loadNewsStory(SERVER, 'abc-9', 5 * 60_000);
+        expect(doFetch).toHaveBeenCalledTimes(2);
+    });
 });

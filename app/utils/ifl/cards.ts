@@ -264,7 +264,11 @@ export const LIVE_REFRESH_MS = 60_000;
 const FRESH_MS = 15_000;
 
 const games = new Map<string, {at: number; game: Promise<ScoreGame>}>();
-const stories = new Map<string, Promise<NewsStory>>();
+const stories = new Map<string, {at: number; story: Promise<NewsStory>}>();
+
+/** A story is fetched again after this long: who rosters the player (and
+ *  whether that's the member signed in now) can change. */
+const STORY_FRESH_MS = 5 * 60_000;
 
 async function fetchCard<T>(serverUrl: string, path: string, parse: (raw: unknown) => T | null): Promise<T> {
     const client = NetworkManager.getClient(serverUrl);
@@ -293,20 +297,21 @@ export function loadScoreGame(serverUrl: string, id: string, now = Date.now()): 
     return game;
 }
 
-/** One story, fetched once per app session (stories don't change); a failed
- *  request is tried again the next time a card for it is drawn. */
-export function loadNewsStory(serverUrl: string, id: string): Promise<NewsStory> {
+/** One story, shared by its cards for STORY_FRESH_MS; a failed request is
+ *  tried again the next time a card for it is drawn. */
+export function loadNewsStory(serverUrl: string, id: string, now = Date.now()): Promise<NewsStory> {
     const key = `${serverUrl}\n${id}`;
-    let story = stories.get(key);
-    if (!story) {
-        story = fetchCard(serverUrl, `/api/v4/ifl/cards/news/${encodeURIComponent(id)}`, parseNewsStory);
-        stories.set(key, story);
-        story.catch(() => {
-            if (stories.get(key) === story) {
-                stories.delete(key);
-            }
-        });
+    const hit = stories.get(key);
+    if (hit && now - hit.at < STORY_FRESH_MS) {
+        return hit.story;
     }
+    const story = fetchCard(serverUrl, `/api/v4/ifl/cards/news/${encodeURIComponent(id)}`, parseNewsStory);
+    stories.set(key, {at: now, story});
+    story.catch(() => {
+        if (stories.get(key)?.story === story) {
+            stories.delete(key);
+        }
+    });
     return story;
 }
 

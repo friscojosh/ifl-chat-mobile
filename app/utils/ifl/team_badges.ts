@@ -108,7 +108,8 @@ function subscribe(listener: () => void) {
     };
 }
 
-export function useIflTeamBadge(serverUrl: string, userId: string): IflBadgeTeam | undefined {
+/** Every team on the badges list (colour, logo revision), keyed by abbr. */
+export function useIflBadgeTeams(serverUrl: string): Record<string, IflBadgeTeam> {
     const all = useSyncExternalStore(subscribe, () => badges.get(serverUrl) ?? EMPTY);
     useEffect(() => {
         watchAppState();
@@ -116,8 +117,14 @@ export function useIflTeamBadge(serverUrl: string, userId: string): IflBadgeTeam
             refreshTeamBadges(serverUrl);
         }
     }, [serverUrl]);
+    return all.teams;
+}
+
+export function useIflTeamBadge(serverUrl: string, userId: string): IflBadgeTeam | undefined {
+    const all = useSyncExternalStore(subscribe, () => badges.get(serverUrl) ?? EMPTY);
+    const teams = useIflBadgeTeams(serverUrl);
     const abbr = all.users[userId];
-    return abbr ? all.teams[abbr] : undefined;
+    return abbr ? teams[abbr] : undefined;
 }
 
 export function teamLogoUrl(serverUrl: string, team: IflBadgeTeam, size: 64 | 128): string {

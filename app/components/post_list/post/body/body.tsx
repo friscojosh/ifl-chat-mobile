@@ -7,11 +7,13 @@ import {type LayoutChangeEvent, type StyleProp, View, type ViewStyle} from 'reac
 
 import Files from '@components/files';
 import FormattedText from '@components/formatted_text';
+import IflPostCard from '@components/ifl/cards'; // IFL: score and news cards
 import JumboEmoji from '@components/jumbo_emoji';
 import ErrorBoundary from '@components/markdown/error_boundary';
 import {Screens} from '@constants';
 import StatusUpdatePost from '@playbooks/components/status_update_post';
 import {PLAYBOOKS_UPDATE_STATUS_POST_TYPE} from '@playbooks/constants/plugin';
+import {parseIflCard} from '@utils/ifl/cards'; // IFL: score and news cards
 import {isEdited as postEdited, isPostFailed, hasInteractivePostContent} from '@utils/post';
 import {blendColors, makeStyleSheetFromTheme} from '@utils/theme';
 
@@ -227,20 +229,33 @@ const Body = ({
     const showFiles = Boolean(filesInfo.length) && redactedFileCount === 0 && !isUnverified;
     const showRedactedPlaceholder = redactedFileCount > 0 && !isUnverified;
 
+    // IFL: score and news cards (body JSX below)
+    const iflCard = parseIflCard(post);
+    const content = hasContent ? (
+        <Content
+            isReplyPost={isReplyPost}
+            layoutWidth={layoutWidth}
+            location={location}
+            mmBlocksEnabled={mmBlocksEnabled}
+            post={post}
+            theme={theme}
+        />
+    ) : null;
+
     if (!hasBeenDeleted) {
         body = (
             <View style={style.messageBody}>
-                {message}
-                {hasContent &&
-                <Content
-                    isReplyPost={isReplyPost}
-                    layoutWidth={layoutWidth}
-                    location={location}
-                    mmBlocksEnabled={mmBlocksEnabled}
-                    post={post}
-                    theme={theme}
-                />
-                }
+                {/* IFL: a score or news card in place of the message and attachment (shown until the card loads, or when it can't) */}
+                {iflCard ? (
+                    <IflPostCard
+                        card={iflCard}
+                        fallback={<>{message}{content}</>}
+                        location={location}
+                        postId={post.id}
+                        showAddReaction={showAddReaction}
+                        canShowOptions={!isPendingOrFailed && !isEphemeral}
+                    />
+                ) : <>{message}{content}</>}
                 {showFiles &&
                 <Files
                     failed={isFailed}

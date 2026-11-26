@@ -18,6 +18,9 @@ export const IFL_TEAM_CHIPS = config.IflTeamChips === true;
 /** 'abbr': abbreviation on the team colour (phones, decision D2); 'logo': the team logo. */
 export const IFL_TEAM_CHIP_STYLE: 'logo' | 'abbr' = config.IflTeamChipStyle === 'logo' ? 'logo' : 'abbr';
 
+/** iflgm.com (config.json's WebsiteURL): where cards link and headshots live. */
+export const IFL_SITE_URL = String(config.WebsiteURL ?? '').replace(/\/+$/, '');
+
 function hostOf(url: string): string {
     return url.trim().toLowerCase().
         replace(/^[a-z][a-z0-9+.-]*:\/\//, '').

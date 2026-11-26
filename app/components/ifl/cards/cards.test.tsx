@@ -20,6 +20,7 @@ import {resetIflTeamBadgesForTest} from '@utils/ifl/team_badges';
 import {openLink} from '@utils/url/links';
 
 import {NewsCard} from './news_card';
+import {isDarkBg} from './palette';
 
 const SERVER = 'https://chat.iflgm.com';
 jest.mock('@context/server', () => ({useServerUrl: () => 'https://chat.iflgm.com'}));
@@ -172,8 +173,11 @@ describe('IFL cards in the post body', () => {
         expect(screen.getByText('FINAL')).toBeTruthy();
         expect(screen.queryByText('(0)')).toBeNull();
         const theme = Preferences.THEMES.denim;
-        expect(StyleSheet.flatten(screen.getByText('101.2').props.style).color).toBe(theme.buttonBg);
-        expect(StyleSheet.flatten(screen.getByText('88.5').props.style).color).not.toBe(theme.buttonBg);
+
+        // The site's gold: its light-theme shade on denim's white background.
+        expect(theme.centerChannelBg.toLowerCase()).toBe('#ffffff');
+        expect(StyleSheet.flatten(screen.getByText('101.2').props.style).color).toBe('#8a7420');
+        expect(StyleSheet.flatten(screen.getByText('88.5').props.style).color).not.toBe('#8a7420');
     });
 
     it('should open the box score on a tap and the post options on a long press', async () => {
@@ -269,5 +273,13 @@ describe('NewsCard', () => {
         expect(screen.getByText('NFL')).toBeTruthy();
         expect(screen.getByText('1 hour ago')).toBeTruthy();
         expect(screen.queryByTestId('ifl_news_card.owner.AFC')).toBeNull();
+    });
+});
+
+describe('isDarkBg', () => {
+    it('should tell dark backgrounds from light ones', () => {
+        expect(isDarkBg('#1f1f1f')).toBe(true);
+        expect(isDarkBg('#ffffff')).toBe(false);
+        expect(isDarkBg('not a colour')).toBe(false);
     });
 });

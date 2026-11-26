@@ -9,6 +9,22 @@ import {StyleSheet} from 'react-native';
 
 import {changeOpacity} from '@utils/theme';
 
+// The site's accent (gold), per its dark and light themes (iflgm.com
+// frontend/src/context/ThemeContext.tsx): the winning score's colour.
+const ACCENT_DARK = '#c9a82c';
+const ACCENT_LIGHT = '#8a7420';
+
+/** True when a #rrggbb background is dark (relative luminance below 0.5). */
+export function isDarkBg(hex: string): boolean {
+    const m = (/^#?([0-9a-f]{6})$/i).exec(hex.trim());
+    if (!m) {
+        return false;
+    }
+    const n = parseInt(m[1], 16);
+    const lum = ((0.2126 * ((n >> 16) & 255)) + (0.7152 * ((n >> 8) & 255)) + (0.0722 * (n & 255))) / 255;
+    return lum < 0.5;
+}
+
 export function cardPalette(theme: Theme) {
     const text = theme.centerChannelColor;
     return {
@@ -22,7 +38,7 @@ export function cardPalette(theme: Theme) {
         textSecondary: changeOpacity(text, 0.84),
         textMuted: changeOpacity(text, 0.64),
         textFaint: changeOpacity(text, 0.56),
-        accent: theme.buttonBg,
+        accent: isDarkBg(theme.centerChannelBg) ? ACCENT_DARK : ACCENT_LIGHT,
         danger: theme.dndIndicator,
         success: theme.onlineIndicator,
     };
